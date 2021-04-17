@@ -1,0 +1,97 @@
+﻿<Window x:Class="NHiLo.Example.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:viewmodel="clr-namespace:NHiLo.Example.ViewModel"
+        Title="NHiLo's Friends Book" mc:Ignorable="d" Height="350" Width="525">
+    <Window.DataContext>
+        <Binding Path="PersonViewModel" Source="{StaticResource ServiceLocator}" />
+    </Window.DataContext>
+    <Grid Width="456">
+        <StackPanel Height="287" HorizontalAlignment="Left" Name="stackPanel1" VerticalAlignment="Top" Width="200" Margin="12,12,0,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="People" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Left"/>
+                <Button Command="{Binding RefreshCommand}" Grid.Row="0" Grid.Column="0" Width="25" Height="25" Margin="0,0,26,0" HorizontalAlignment="Right">
+                    <Image Source="refresh.png" />
+                </Button>                
+                <Button Command="{Binding AddNewPersonCommand}" Grid.Row="0" Grid.Column="0" Width="25" Height="25" HorizontalAlignment="Right">
+                    <Image Source="plus.png" />
+                </Button>
+                <ListView ItemsSource="{Binding People}" SelectedItem="{Binding SelectedPerson}" Width="200" Height="200" Grid.Row="1" Grid.Column="0">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Id" DisplayMemberBinding="{Binding Id}" Width="35"/>
+                            <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Name}" Width="120" />
+                            <GridViewColumn Width="35">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorLevel=3, AncestorType={x:Type Grid}}, Path=DataContext.DeletePersonCommand}" 
+                                                    CommandParameter="{Binding DataContext,RelativeSource={RelativeSource Self}}"  HorizontalAlignment="Center">
+                                                <Image Source="delete.png" />
+                                            </Button>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <!--<GridViewColumn  Header="Joining Date" DisplayMemberBinding="{Binding JoiningDate, Converter={StaticResource MyConverter}}" Width="80" />-->
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+                <TextBox Text="{Binding SelectedPerson.Name, Mode=TwoWay}" Grid.Row="2" Grid.Column="0" Width="100" HorizontalAlignment="Left" MaxLength="100"/>
+            </Grid>
+        </StackPanel>
+        <StackPanel Height="287" HorizontalAlignment="Left" Margin="235,12,0,0" Name="stackPanel2" VerticalAlignment="Top" Width="200">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Telephone numbers" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Left"/>
+                <Button Command="{Binding AddNewContactCommmand}" CommandParameter="{Binding SelectedPerson, Mode=OneWay}" Grid.Row="0" Grid.Column="0" Width="25" Height="25" HorizontalAlignment="Right">
+                    <Image Source="plus.png" />
+                </Button>
+                <ListView ItemsSource="{Binding ContactsFromSelectedPerson}" SelectedItem="{Binding SelectedContact}" Width="200" Height="200"  Grid.Row="2">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Id" DisplayMemberBinding="{Binding Id}" Width="35"/>
+                            <GridViewColumn Header="Telephone" DisplayMemberBinding="{Binding TelephoneNumber}" Width="120"/>
+                            <GridViewColumn Width="35">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorLevel=3, AncestorType={x:Type Grid}}, Path=DataContext.RemoveContactCommand}" 
+                                                    CommandParameter="{Binding DataContext,RelativeSource={RelativeSource Self}}">
+                                                <Image Source="delete.png" />
+                                            </Button>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+                <TextBox Text="{Binding SelectedContact.TelephoneNumber, Mode=TwoWay}" Grid.Row="3" Grid.Column="0" Width="100" HorizontalAlignment="Left" MaxLength="10"/>
+                <Button Command="{Binding SaveCommand}" HorizontalAlignment="Center" Grid.Row="4" Grid.Column="0" Width="25" Height="25">
+                    <Image Source="save.png" />
+                </Button>
+            </Grid>
+        </StackPanel>
+    </Grid>
+</Window>

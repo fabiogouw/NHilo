@@ -2,7 +2,7 @@
 
 namespace NHiLo
 {
-    public enum ErrorCodes : int
+    public enum ErrorCodes
     {
         /// <summary>
         /// NHiLo was unable to find a connection string to connect to the repository to store
@@ -49,6 +49,11 @@ namespace NHiLo
         /// NHiLo could not get the next hi value from the repository.
         /// </summary>
         [Description("An error occured while getting the next hi value from the repository.")]
-        ErrorWhileGettingNextHiValue = 2102
+        ErrorWhileGettingNextHiValue = 2102,
+        /// <summary>
+        /// NHiLo could not get the next hi value from the repository.
+        /// </summary>
+        [Description("An error occured while decoding an ASCII85 string.")]
+        DecodingASCII85StringError = 3102
     }
 }

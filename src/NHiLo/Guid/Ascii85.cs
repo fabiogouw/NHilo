@@ -17,28 +17,28 @@ namespace NHiLo.Guid
         /// <summary>
         /// Prefix mark that identifies an encoded ASCII85 string, traditionally '<~'
         /// </summary>
-        public string PrefixMark = "<~";
+        public const string PrefixMark = "<~";
         /// <summary>
         /// Suffix mark that identifies an encoded ASCII85 string, traditionally '~>'
         /// </summary>
-        public string SuffixMark = "~>";
+        public const string SuffixMark = "~>";
         /// <summary>
         /// Maximum line length for encoded ASCII85 string; 
         /// set to zero for one unbroken line.
         /// </summary>
-        public int LineLength = 75;
+        public const int LineLength = 75;
         /// <summary>
         /// Add the Prefix and Suffix marks when encoding, and enforce their presence for decoding
         /// </summary>
         public bool EnforceMarks = true;
 
         private const int _asciiOffset = 33;
-        private byte[] _encodedBlock = new byte[5];
-        private byte[] _decodedBlock = new byte[4];
+        private readonly byte[] _encodedBlock = new byte[5];
+        private readonly byte[] _decodedBlock = new byte[4];
         private uint _tuple = 0;
         private int _linePos = 0;
 
-        private uint[] pow85 = { 85 * 85 * 85 * 85, 85 * 85 * 85, 85 * 85, 85, 1 };
+        private readonly uint[] pow85 = { 85 * 85 * 85 * 85, 85 * 85 * 85, 85 * 85, 85, 1 };
 
         /// <summary>
         /// Decodes an ASCII85 encoded string into the original binary data
@@ -47,24 +47,13 @@ namespace NHiLo.Guid
         /// <returns>byte array of decoded binary data</returns>
         public byte[] Decode(string s)
         {
-            if (EnforceMarks)
+            if (EnforceMarks && !s.StartsWith(PrefixMark) || !s.EndsWith(SuffixMark))
             {
-                if (!s.StartsWith(PrefixMark) | !s.EndsWith(SuffixMark))
-                {
-                    throw new Exception("ASCII85 encoded data should begin with '" + PrefixMark +
-                        "' and end with '" + SuffixMark + "'");
-                }
+                throw new NHiLoException(ErrorCodes.DecodingASCII85StringError)
+                    .WithInfo("reason", $"ASCII85 encoded data should begin with '{ PrefixMark }' and end with '{ SuffixMark }'");
             }
 
-            // strip prefix and suffix if present
-            if (s.StartsWith(PrefixMark))
-            {
-                s = s.Substring(PrefixMark.Length);
-            }
-            if (s.EndsWith(SuffixMark))
-            {
-                s = s.Substring(0, s.Length - SuffixMark.Length);
-            }
+            s = RemoveSufixAndPrefix(s);
 
             using (MemoryStream ms = new MemoryStream())
             {
@@ -78,7 +67,8 @@ namespace NHiLo.Guid
                         case 'z':
                             if (count != 0)
                             {
-                                throw new Exception("The character 'z' is invalid inside an ASCII85 block.");
+                                throw new NHiLoException(ErrorCodes.DecodingASCII85StringError)
+                                    .WithInfo("reason", "The character 'z' is invalid inside an ASCII85 block.");
                             }
                             _decodedBlock[0] = 0;
                             _decodedBlock[1] = 0;
@@ -98,7 +88,8 @@ namespace NHiLo.Guid
                         default:
                             if (c < '!' || c > 'u')
                             {
-                                throw new Exception("Bad character '" + c + "' found. ASCII85 only allows characters '!' to 'u'.");
+                                throw new NHiLoException(ErrorCodes.DecodingASCII85StringError)
+                                    .WithInfo("reason", $"Bad character '{ c }' found. ASCII85 only allows characters '!' to 'u'.");
                             }
                             processChar = true;
                             break;
@@ -123,7 +114,8 @@ namespace NHiLo.Guid
                 {
                     if (count == 1)
                     {
-                        throw new Exception("The last block of ASCII85 data cannot be a single byte.");
+                        throw new NHiLoException(ErrorCodes.DecodingASCII85StringError)
+                            .WithInfo("reason", "The last block of ASCII85 data cannot be a single byte.");
                     }
                     count--;
                     _tuple += pow85[count];
@@ -138,6 +130,21 @@ namespace NHiLo.Guid
             }
         }
 
+        private static string RemoveSufixAndPrefix(string s)
+        {
+            // strip prefix and suffix if present
+            if (s.StartsWith(PrefixMark))
+            {
+                s = s.Substring(PrefixMark.Length);
+            }
+            if (s.EndsWith(SuffixMark))
+            {
+                s = s.Substring(0, s.Length - SuffixMark.Length);
+            }
+
+            return s;
+        }
+
         /// <summary>
         /// Encodes binary data into a plaintext ASCII85 format string
         /// </summary>
@@ -145,7 +152,7 @@ namespace NHiLo.Guid
         /// <returns>ASCII85 encoded string</returns>
         public string Encode(byte[] ba)
         {
-            StringBuilder sb = new StringBuilder((int)(ba.Length * (_encodedBlock.Length / _decodedBlock.Length)));
+            StringBuilder sb = new StringBuilder((ba.Length * (_encodedBlock.Length / _decodedBlock.Length)));
             _linePos = 0;
 
             int count = 0;
@@ -213,20 +220,6 @@ namespace NHiLo.Guid
             {
                 _decodedBlock[i] = (byte)(_tuple >> 24 - (i * 8));
             }
-        }
-
-        private void AppendString(StringBuilder sb, string s)
-        {
-            if (LineLength > 0 && (_linePos + s.Length > LineLength))
-            {
-                _linePos = 0;
-                sb.Append('\n');
-            }
-            else
-            {
-                _linePos += s.Length;
-            }
-            sb.Append(s);
         }
 
         private void AppendChar(StringBuilder sb, char c)

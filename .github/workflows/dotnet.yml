@@ -3,29 +3,81 @@ name: Build
 on:
   push:
     branches: [ master, feature/** ]
-  pull_request:
-    branches: [ master ]
-
+#  pull_request:
+#    branches: [ master ]
+env:
+  REPOSITORY_URL: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+  
 jobs:
   build:
 
-    runs-on: windows-latest
-    
-    defaults:
-      run:
-        working-directory: ./src
-        
+    runs-on: ubuntu-latest
+            
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: 3.1.x
-    - name: Info
-      run: dotnet --info
-    - name: Restore
-      run: dotnet restore NHilo.sln    
-    - name: Build
-      run: dotnet build NHilo.sln --no-restore
-    - name: Test
-      run: dotnet test NHilo.sln --no-build --verbosity normal --filter Category=Unit
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 3.1.x
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 1.11
+      
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      
+      - name: Cache SonarCloud packages
+        uses: actions/cache@v1
+        with:
+          path: ~\sonar\cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+      
+      - name: Cache SonarCloud scanner
+        id: cache-sonar-scanner
+        uses: actions/cache@v1
+        with:
+          path: .\.sonar\scanner
+          key: ${{ runner.os }}-sonar-scanner
+          restore-keys: ${{ runner.os }}-sonar-scanner
+      
+      - name: Install SonarCloud scanner
+        if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
+        run: dotnet tool update dotnet-sonarscanner --tool-path ./.sonar/scanner
+
+      - name: Install Report Generator
+        run: dotnet tool install dotnet-reportgenerator-globaltool --tool-path ./.reportgenerator          
+
+      - name: Restore
+        run: dotnet restore ./src/NHilo.sln        
+
+      - name: Start analyze
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ./.sonar/scanner/dotnet-sonarscanner begin /k:"fabiogouw_NHilo" /o:"fabiogouw" /d:sonar.login="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.coverageReportPaths=/home/runner/work/NHilo/NHilo/.reports/SonarQube.xml
+
+      - name: Build
+        run: dotnet build ./src/NHilo.sln --configuration Release --no-restore 
+
+      - name: Unit Test
+        run: dotnet test ./src/NHilo.sln --no-build --configuration Release --verbosity normal --filter Category=Unit --collect:"XPlat Code Coverage" -l trx
+      
+      - name: Integration Test
+        env:
+          TZ: America/Sao_Paulo # for integration tests with Oracle DB
+        run: dotnet test ./src/NHilo.sln --no-build --configuration Release --verbosity normal --filter Category=Integration --collect:"XPlat Code Coverage" -l trx
+
+      - name: Create Coverage Report
+        run: ./.reportgenerator/reportgenerator -reports:./**/coverage.cobertura.xml -targetdir:/home/runner/work/NHilo/NHilo/.reports/ -reporttypes:"SonarQube"
+
+      - name: End analyze
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ./.sonar/scanner/dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
+
+      - name: Publish package to GitHub
+        run: dotnet nuget push ./src/NHiLo/bin/Release/*.nupkg --source ${{ env.REPOSITORY_URL }} --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate

@@ -8,7 +8,7 @@ namespace NHiLo // this should be available at the root namespace
     /// A custom exception for NHiLo.
     /// </summary>
     [Serializable]
-    public class NHiLoException : ApplicationException
+    public class NHiLoException : ApplicationException, ISerializable
     {
 
         internal NHiLoException(ErrorCodes errorCode)
@@ -20,6 +20,11 @@ namespace NHiLo // this should be available at the root namespace
             : base(GetMessageForErrorCode(errorCode), innerException)
         {
             ErrorCode = errorCode;
+        }
+
+        protected NHiLoException(SerializationInfo info, StreamingContext context) 
+            : base(info, context)
+        {
         }
 
         /// <summary>

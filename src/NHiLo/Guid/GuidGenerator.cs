@@ -1,4 +1,7 @@
-﻿namespace NHiLo.Guid
+﻿using System;
+using System.Collections;
+
+namespace NHiLo.Guid
 {
     /// <summary>
     /// Create sequential guids to be used as keys.
@@ -12,27 +15,29 @@
     {
         public string GetKey()
         {
-            System.Guid guid;
-            NativeMethods.UuidCreateSequential(out guid);
-            var s = guid.ToByteArray();
-            var t = new byte[16];
-            t[3] = s[0];
-            t[2] = s[1];
-            t[1] = s[2];
-            t[0] = s[3];
-            t[5] = s[4];
-            t[4] = s[5];
-            t[7] = s[6];
-            t[6] = s[7];
-            t[8] = s[8];
-            t[9] = s[9];
-            t[10] = s[10];
-            t[11] = s[11];
-            t[12] = s[12];
-            t[13] = s[13];
-            t[14] = s[14];
-            t[15] = s[15];
-            return new System.Guid(t).ToString();
+            byte[] guidArray = System.Guid.NewGuid().ToByteArray();
+
+            DateTime baseDate = new DateTime(1900, 1, 1);
+            DateTime now = DateTime.Now;
+
+            // Get the days and milliseconds which will be used to build the byte string 
+            TimeSpan days = new TimeSpan(now.Ticks - baseDate.Ticks);
+            TimeSpan msecs = now.TimeOfDay;
+
+            // Convert to a byte array 
+            // Note that SQL Server is accurate to 1/300th of a millisecond so we divide by 3.333333 
+            byte[] daysArray = BitConverter.GetBytes(days.Days);
+            byte[] msecsArray = BitConverter.GetBytes((long)(msecs.TotalMilliseconds / 3.333333));
+
+            // Reverse the bytes to match SQL Servers ordering 
+            Array.Reverse(daysArray);
+            Array.Reverse(msecsArray);
+
+            // Copy the bytes into the guid 
+            Array.Copy(daysArray, daysArray.Length - 2, guidArray, guidArray.Length - 6, 2);
+            Array.Copy(msecsArray, msecsArray.Length - 4, guidArray, guidArray.Length - 4, 4);
+
+            return new System.Guid(guidArray).ToString();
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using NHiLo.Guid;
 using Xunit;
+using FluentAssertions;
 
 namespace NHiLo.Tests.Guid
 {
@@ -29,14 +30,14 @@ namespace NHiLo.Tests.Guid
 
             [Fact]
             [Trait("Category", "Unit")]
-            public void ShouldGet20LengthGuid()
+            public void Should_Get20LengthGuid_When_GeneratingNewKey()
             {
                 // Arrange
                 var generator = new Ascii85GuidGenerator();
                 // Act
                 var key = generator.GetKey();
                 // Assert
-                Assert.Equal(20, key.Length);
+                key.Length.Should().Be(20);
             }
 
         }
